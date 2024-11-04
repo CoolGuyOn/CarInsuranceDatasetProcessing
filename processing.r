@@ -45,6 +45,8 @@ for (col in boolean_columns) {
 head(data[, boolean_columns])
 head(processed_data[, boolean_columns])
 
+# way 1 to visualise
+
 library(ggplot2)
 library(gridExtra)
 
@@ -82,7 +84,7 @@ p6 <- ggplot(processed_data, aes(y = displacement)) +
 # Arrange the plots in a 3x2 grid
 grid.arrange(p1, p2, p3, p4, p5, p6, nrow = 3, ncol = 2)
 
-
+# way 2 to visualise
 
 library(plotly)
 
