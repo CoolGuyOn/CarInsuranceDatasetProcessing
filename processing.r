@@ -2,7 +2,11 @@ install.packages("ggplot2")
 install.packages("gridExtra")
 install.packages("plotly")
 
+# Install dplyr for data manipulation
+install.packages("dplyr")
 
+# Install caret for one-hot encoding (dummy variable creation)
+install.packages("caret")
 
 
 data <- read.csv("Dataset/archive/train.csv") 
@@ -99,3 +103,55 @@ fig <- plot_ly(processed_data, y = ~policy_tenure, type = "box", name = "policy_
          boxmode = "group")  # Group boxes together
 
 fig
+
+library(dplyr)
+library(caret)
+
+# Remove irrelevant variables
+data <- data %>% select(-policy_id)
+
+# Remove near-zero variance columns
+nzv <- nearZeroVar(data, saveMetrics = TRUE)
+data <- data[, !nzv$nzv]
+
+# Convert categorical columns to factors (for one-hot encoding)
+data <- data %>%
+  mutate_if(is.character, as.factor)
+
+# Apply one-hot encoding to remaining categorical variables
+data_encoded <- dummyVars(" ~ .", data = data, fullRank = TRUE)
+data <- predict(data_encoded, newdata = data)
+data <- as.data.frame(data)
+
+# Ensure the target variable remains numeric
+data$is_claim <- as.numeric(data$is_claim)
+
+# Calculate feature correlations with `is_claim`
+correlations <- cor(data, use = "complete.obs")
+cor_with_claim <- correlations["is_claim", ]
+cor_with_claim <- cor_with_claim[!names(cor_with_claim) %in% "is_claim"]  # Exclude self-correlation
+
+# Rank variables by absolute correlation
+cor_with_claim_sorted <- sort(abs(cor_with_claim), decreasing = TRUE)
+
+# Select the top factors
+top_50_factors <- head(cor_with_claim_sorted, 50)
+
+# Convert the top factors to a data frame
+top_50_df <- data.frame(
+  Factor = names(top_50_factors),
+  Correlation = as.numeric(top_50_factors)
+)
+
+# Create a bar plot to show the top factors
+ggplot(top_50_df, aes(x = reorder(Factor, Correlation), y = Correlation)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +  # Flip coordinates for easier reading
+  labs(title = "Top 50 Factors Influencing Insurance Claim Likelihood",
+       x = "Factors",
+       y = "Correlation with Claim Likelihood") +
+  theme_minimal()
+
+# Download the modified data
+downloads_path <- file.path(Sys.getenv("USERPROFILE"), "Downloads")
+write.csv(data, file.path(downloads_path, "data.csv"), row.names = FALSE)
