@@ -150,4 +150,4 @@ ggplot(top_50_df, aes(x = reorder(Factor, Correlation), y = Correlation)) +
 
 # Download the modified data
 downloads_path <- file.path(Sys.getenv("USERPROFILE"), "Downloads")
-write.csv(data, file.path(downloads_path, "data.csv"), row.names = FALSE)
+write.csv(processed_data, file.path(downloads_path, "processed_data.csv"), row.names = FALSE)
