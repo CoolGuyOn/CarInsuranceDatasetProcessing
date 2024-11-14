@@ -1,17 +1,6 @@
-install.packages("ggplot2")
-install.packages("gridExtra")
-install.packages("plotly")
-
-# Install dplyr for data manipulation
-install.packages("dplyr")
-
-# Install caret for one-hot encoding (dummy variable creation)
-install.packages("caret")
-
+install.packages(c("ggplot2", "gridExtra", "plotly", "dplyr", "caret"))
 
 data <- read.csv("Dataset/archive/train.csv") 
-
-
 processed_data <- data
 
 head(processed_data)         # Displays the first few rows
@@ -21,33 +10,29 @@ str(processed_data)          # Shows the structure of the data (data types, colu
 colSums(is.na(processed_data))  # Count of missing values in each column
 
 # Convert appropriate columns to numeric types
-processed_data$displacement <- as.numeric(processed_data$displacement)
-str(processed_data)
-# Extract numeric values from 'max_torque' and 'max_power' columns
-library(stringr)
-processed_data$max_torque <- as.numeric(str_extract(processed_data$max_torque, "\\d+\\.?\\d*"))
-processed_data$max_power <- as.numeric(str_extract(processed_data$max_power, "\\d+\\.?\\d*"))
+# processed_data$displacement <- as.numeric(processed_data$displacement)
+# str(processed_data)
 
 # Verify extraction by viewing the first few rows
-head(processed_data$max_torque)
-head(processed_data$max_power)
+# head(processed_data$max_torque)
+# head(processed_data$max_power)
 
 # List of boolean columns to convert
-boolean_columns <- c('is_esc', 'is_adjustable_steering', 'is_tpms', 'is_parking_sensors', 
-                     'is_parking_camera', 'is_front_fog_lights', 'is_rear_window_wiper', 
-                     'is_rear_window_washer', 'is_rear_window_defogger', 'is_brake_assist', 
-                     'is_power_door_locks', 'is_central_locking', 'is_power_steering', 
-                     'is_driver_seat_height_adjustable', 'is_day_night_rear_view_mirror', 
-                     'is_ecw', 'is_speed_alert')
+# boolean_columns <- c('is_esc', 'is_adjustable_steering', 'is_tpms', 'is_parking_sensors', 
+#                     'is_parking_camera', 'is_front_fog_lights', 'is_rear_window_wiper', 
+#                     'is_rear_window_washer', 'is_rear_window_defogger', 'is_brake_assist', 
+#                     'is_power_door_locks', 'is_central_locking', 'is_power_steering', 
+#                     'is_driver_seat_height_adjustable', 'is_day_night_rear_view_mirror', 
+#                     'is_ecw', 'is_speed_alert')
 
 # Convert each boolean column to binary (1/0)
-for (col in boolean_columns) {
-  processed_data[[col]] <- ifelse(processed_data[[col]] == "Yes", 1, 0)
-}
+# for (col in boolean_columns) {
+#   processed_data[[col]] <- ifelse(processed_data[[col]] == "Yes", 1, 0)
+# }
 
 # Verify the conversion
-head(data[, boolean_columns])
-head(processed_data[, boolean_columns])
+# head(data[, boolean_columns])
+# head(processed_data[, boolean_columns])
 
 # way 1 to visualise
 
@@ -106,28 +91,39 @@ fig
 
 library(dplyr)
 library(caret)
+library(stringr)
 
 # Remove irrelevant variables
-data <- data %>% select(-policy_id)
+processed_data <- processed_data %>% select(-policy_id)
+
+# Extract numeric values from 'max_torque' and 'max_power' columns
+processed_data$max_torque <- as.numeric(str_extract(processed_data$max_torque, "\\d+\\.?\\d*"))
+processed_data$max_power <- as.numeric(str_extract(processed_data$max_power, "\\d+\\.?\\d*"))
 
 # Remove near-zero variance columns
-nzv <- nearZeroVar(data, saveMetrics = TRUE)
-data <- data[, !nzv$nzv]
+# nzv <- nearZeroVar(data, saveMetrics = TRUE)
+# data <- data[, !nzv$nzv]
+
+# Identify numeric columns before one-hot encoding
+numeric_columns <- sapply(processed_data, is.numeric)
+
+# Ensure the target variable 'is_claim' is excluded from the scaling process
+numeric_columns <- setdiff(names(processed_data)[numeric_columns], "is_claim")
 
 # Convert categorical columns to factors (for one-hot encoding)
-data <- data %>%
+processed_data <- processed_data %>%
   mutate_if(is.character, as.factor)
 
 # Apply one-hot encoding to remaining categorical variables
-data_encoded <- dummyVars(" ~ .", data = data, fullRank = TRUE)
-data <- predict(data_encoded, newdata = data)
-data <- as.data.frame(data)
+processed_data_encoded <- dummyVars(" ~ .", data = processed_data, fullRank = TRUE)
+processed_data <- predict(processed_data_encoded, newdata = processed_data)
+processed_data <- as.data.frame(processed_data)
 
-# Ensure the target variable remains numeric
-data$is_claim <- as.numeric(data$is_claim)
+# Scale the numeric columns
+processed_data[numeric_columns] <- scale(processed_data[numeric_columns])
 
-# Calculate feature correlations with `is_claim`
-correlations <- cor(data, use = "complete.obs")
+# Calculate feature correlations with target variable `is_claim`
+correlations <- cor(processed_data, use = "complete.obs")
 cor_with_claim <- correlations["is_claim", ]
 cor_with_claim <- cor_with_claim[!names(cor_with_claim) %in% "is_claim"]  # Exclude self-correlation
 
