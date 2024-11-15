@@ -1,4 +1,5 @@
-install.packages(c("ggplot2", "gridExtra", "plotly", "dplyr", "caret"))
+install.packages(c("ggplot2", "gridExtra", "plotly", "dplyr", "caret", "smotefamily"))
+set.seed(2004)
 
 data <- read.csv("Dataset/archive/train.csv") 
 processed_data <- data
@@ -151,3 +152,37 @@ ggplot(top_50_df, aes(x = reorder(Factor, Correlation), y = Correlation)) +
 # Download the modified data
 downloads_path <- file.path(Sys.getenv("USERPROFILE"), "Downloads")
 write.csv(processed_data, file.path(downloads_path, "processed_data.csv"), row.names = FALSE)
+
+# Split the data into train test sets before SMOTE over-sampling
+library(smotefamily)
+
+# Split the data into training and test sets (70-30 split)
+n_rows <- nrow(processed_data)
+training_idx <- sample(n_rows, n_rows * 0.7)
+train_data <- processed_data[training_idx,]
+test_data <- processed_data[-training_idx,]
+
+# Separate features (X) and target (y)
+x_train <- train_data[, setdiff(names(train_data), "is_claim")]
+y_train <- train_data$is_claim
+
+# Apply SMOTE
+balanced_data <- SMOTE(X = x_train, target = y_train, K = 5, dup_size = 6)  # Dup_size is amount of synthetic values, currently roughly 60-40 split
+
+# Scale numeric columns in the training set
+train_mean <- colMeans(train_data[, numeric_columns])  # Calculate mean from training data
+train_sd <- apply(train_data[, numeric_columns], 2, sd)  # Calculate SD from training data
+
+# Scale train and test sets based on training data statistics
+scaled_train_data <- train_data
+scaled_train_data[, numeric_columns] <- scale(train_data[, numeric_columns], center = train_mean, scale = train_sd)
+
+scaled_test_data <- test_data
+scaled_test_data[, numeric_columns] <- scale(test_data[, numeric_columns], center = train_mean, scale = train_sd)
+
+# Check the results
+str(balanced_data$data)
+str(test_data)
+
+write.csv(balanced_data$data, file.path(downloads_path, "balanced_data.csv"), row.names = FALSE)
+write.csv(test_data, file.path(downloads_path, "test_data.csv"), row.names = FALSE)
