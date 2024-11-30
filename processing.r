@@ -1,29 +1,17 @@
 # List of required packages
-
 required_packages <- c("tidyr", "ggplot2", "gridExtra", "dplyr", "caret", "smotefamily", "polycor", "readr")
 
-
 # Function to check and install packages
-
 install_if_missing <- function(package) {
-  
   if (!require(package, character.only = TRUE)) {
-    
     install.packages(package, dependencies = TRUE)
-    
     library(package, character.only = TRUE)
-    
   }
-  
 }
 
-
 # Loop through the required packages
-
 for (pkg in required_packages) {
-  
   install_if_missing(pkg)
-  
 }
 
 # Load required libraries
@@ -32,15 +20,15 @@ library(ggplot2)
 library(gridExtra)
 library(dplyr)
 library(caret)
-library(smotefamily)
+library(smotefamily)  # Contains ADASYN
 library(polycor)
-library(readr)    # Added for read_csv
+library(readr)        # Added for read_csv
 
 # Set seed for reproducibility
 set.seed(42)
 
 # Load Data
-train_data <- read.csv("~/Documents/R/com3018CW/CarInsuranceDatasetProcessing/Dataset/archive/train.csv")
+train_data <- read.csv("Dataset/archive/train.csv")
 
 # Preprocessing Function
 preprocess_data <- function(data) {
@@ -85,7 +73,7 @@ processed_data <- na.omit(processed_data)
 
 # Split the data into training and testing sets (70% train, 30% test)
 set.seed(42) # For reproducibility
-train_index <- sample(1:nrow(processed_data), 0.7 * nrow(processed_data))
+train_index <- sample(1:nrow(processed_data), 0.9 * nrow(processed_data))
 train_set <- processed_data[train_index, ]
 test_set <- processed_data[-train_index, ]
 
@@ -93,23 +81,18 @@ test_set <- processed_data[-train_index, ]
 print(dim(train_set))
 print(dim(test_set))
 
-# SMOTE Oversampling on the training set only
-x <- as.data.frame(train_set %>% select(-is_claim))  # Features
-y <- train_set$is_claim  # Target variable
+majority <- train_set %>% filter(is_claim == 0)
+minority <- train_set %>% filter(is_claim == 1)
+undersampled_majority <- majority[sample(1:nrow(majority), nrow(minority)), ]
+undersampled_train_set <- rbind(undersampled_majority, minority)
 
-# Apply SMOTE
-smote_output <- SMOTE(X = x, target = y, K = 5, dup_size = 1)
+names(undersampled_train_set)[ncol(undersampled_train_set)] <- "is_claim"
 
-# Extract the balanced dataset
-smote_train_df <- smote_output$data
-names(smote_train_df)[ncol(smote_train_df)] <- "is_claim"
-
-# Ensure is_claim is numeric after SMOTE
-smote_train_df$is_claim <- as.numeric(smote_train_df$is_claim)
+undersampled_train_set$is_claim <- as.numeric(undersampled_train_set$is_claim)
 
 # Standardization on the training set
-preprocess_params <- preProcess(smote_train_df %>% select(-is_claim), method = c("center", "scale"))
-standardized_train_data <- predict(preprocess_params, smote_train_df)
+preprocess_params <- preProcess(undersampled_train_set %>% select(-is_claim), method = c("center", "scale"))
+standardized_train_data <- predict(preprocess_params, undersampled_train_set)
 
 # Apply the same preprocessing (standardization) to the test set
 standardized_test_data <- predict(preprocess_params, test_set)
@@ -117,17 +100,22 @@ standardized_test_data <- predict(preprocess_params, test_set)
 # Ensure is_claim remains numeric in the test set
 standardized_test_data$is_claim <- as.numeric(standardized_test_data$is_claim)
 
+# Shuffle train set
+standardized_train_data <- standardized_train_data[sample(1:nrow(standardized_train_data)), ]
+standardized_train_data <- set_sample_size(standardized_train_data, 30000)  # Set size to 30k rows
+
 # Check the structure of the standardized datasets
 str(standardized_train_data)
 str(standardized_test_data)
 
 # Save the standardized datasets to CSV files
-write.csv(standardized_train_data, "~/Documents/R/com3018CW/CarInsuranceDatasetProcessing/standardized_train_data.csv", row.names = FALSE)
-write.csv(standardized_test_data, "~/Documents/R/com3018CW/CarInsuranceDatasetProcessing/standardized_test_data.csv", row.names = FALSE)
+downloads_path <- file.path(Sys.getenv("USERPROFILE"), "Downloads")
+write.csv(standardized_train_data, file.path(downloads_path, "standardized_train_set.csv"), row.names = FALSE)
+write.csv(standardized_test_data, file.path(downloads_path, "standardized_test_set.csv"), row.names = FALSE)
 
 # Print messages to confirm saving
-cat("Standardized training data saved to 'standardized_train_data.csv'\n")
-cat("Standardized testing data saved to 'standardized_test_data.csv'\n")
+cat("Standardized training data saved to 'standardized_train_set.csv'\n")
+cat("Standardized testing data saved to 'standardized_test_set.csv'\n")
 
 # Visualization 1: Box Plots for Continuous Variables
 continuous_vars <- c("policy_tenure", "age_of_car", "age_of_policyholder ", "max_torque", "max_power", "displacement")
@@ -135,8 +123,8 @@ continuous_vars <- c("policy_tenure", "age_of_car", "age_of_policyholder ", "max
 # Check which continuous variables actually exist in the data
 available_vars <- continuous_vars[continuous_vars %in% names(standardized_train_data)]
 
-long_data <- standardized_train_data %>%
-  select(all_of(available_vars)) %>%
+long_data <- standardized_train_data %>% 
+  select(all_of(available_vars)) %>% 
   pivot_longer(everything(), names_to = "Variable", values_to = "Value")
 
 gg_boxplot <- ggplot(long_data, aes(x = Variable, y = Value, fill = Variable)) +
