@@ -79,7 +79,7 @@ important_features <- names(sort(abs(cor_with_claim), decreasing = TRUE))[2:11] 
 # Reduce data to key features
 selected_features <- c(important_features, "is_claim")
 processed_data <- processed_data %>% select(all_of(selected_features))
-######################################################################################
+
 # Set a seed for reproducibility
 set.seed(42)
 
@@ -99,17 +99,10 @@ cat("Train Set:", nrow(train_set), "\n")
 cat("Validation Set:", nrow(validate_set), "\n")
 cat("Test Set:", nrow(test_set), "\n\n")
 
-
-
-
-
-
-# Assuming 'train_set' is your original dataset
 # Split the dataset into majority and minority classes
 majority <- train_set[train_set$is_claim == 0, ]
 minority <- train_set[train_set$is_claim == 1, ]
 
-# Step 1: Oversampling - Increase minority class size 
 # Sample the minority class to match the size of the majority class
 oversampled_minority <- minority[sample(1:nrow(minority), nrow(majority), replace = TRUE), ]
 
@@ -117,7 +110,6 @@ oversampled_minority <- minority[sample(1:nrow(minority), nrow(majority), replac
 cat("Size of oversampled minority class:", nrow(oversampled_minority), "\n")
 cat("Size of majority class:", nrow(majority), "\n")
 
-# Step 2: Undersampling - Reduce majority class size 
 # Sample the majority class to match the size of the oversampled minority class
 undersampled_majority <- majority[sample(1:nrow(majority), nrow(oversampled_minority)), ]
 
@@ -127,23 +119,16 @@ cat("Size of undersampled majority class:", nrow(undersampled_majority), "\n")
 # Combine the undersampled majority and oversampled minority classes
 balanced_train_set <- rbind(undersampled_majority, oversampled_minority)
 
-# Step 3: Shuffle the combined dataset to randomize class order
+# Shuffle the combined dataset to randomize class order
 balanced_train_set <- balanced_train_set[sample(1:nrow(balanced_train_set)), ]
 
 # Verify the class distribution
 cat("\nClass Distribution After Balancing:\n")
 print(table(balanced_train_set$is_claim))
 
-# Optional: Percentage distribution
+# Percentage distribution
 cat("\nPercentage Distribution After Balancing:\n")
 print(prop.table(table(balanced_train_set$is_claim)) * 100)
-
-
-
-
-
-
-
 
 # Shuffle the balanced training set
 balanced_train_set <- balanced_train_set[sample(1:nrow(balanced_train_set)), ]
@@ -163,12 +148,6 @@ print(table(test_set$is_claim))
 
 cat("\nClass Counts in the Validation Set:\n")
 print(table(validate_set$is_claim))
-
-
-
-
-
-
 
 # Standardization on the balanced training set
 preprocess_params <- preProcess(balanced_train_set %>% select(-is_claim), method = c("center", "scale"))
