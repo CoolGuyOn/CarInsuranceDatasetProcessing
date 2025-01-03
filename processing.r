@@ -1,5 +1,5 @@
 # List of required packages
-required_packages <- c("tidyr", "ggplot2", "gridExtra", "dplyr", "caret", "polycor", "readr")
+required_packages <- c("ggplot2", "gridExtra", "dplyr", "caret","readr")
 
 # Function to check and install packages
 install_if_missing <- function(package) {
@@ -15,12 +15,10 @@ for (pkg in required_packages) {
 }
 
 # Load required libraries
-library(tidyr)
 library(ggplot2)
 library(gridExtra)
 library(dplyr)
 library(caret)
-library(polycor)
 library(readr)
 
 # Set seed for reproducibility
