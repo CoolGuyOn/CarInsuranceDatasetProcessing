@@ -1,5 +1,5 @@
 # List of required packages
-required_packages <- c("tidyr", "ggplot2", "gridExtra", "dplyr", "caret", "smotefamily", "polycor", "readr")
+required_packages <- c("tidyr", "ggplot2", "gridExtra", "dplyr", "caret", "polycor", "readr")
 
 # Function to check and install packages
 install_if_missing <- function(package) {
@@ -20,7 +20,6 @@ library(ggplot2)
 library(gridExtra)
 library(dplyr)
 library(caret)
-library(smotefamily)  # Contains ADASYN
 library(polycor)
 library(readr)
 
@@ -172,7 +171,7 @@ standardized_train_data <- standardized_train_data[sample(1:nrow(standardized_tr
 cat("\nStandardized Training Data (first few rows):\n")
 print(head(standardized_train_data))
 
-# Print the first few rows of the standardized validation data
+# Print the first few rows of thestandardized validation data
 cat("\nStandardized Validation Data (first few rows):\n")
 print(head(standardized_validate_data))
 
